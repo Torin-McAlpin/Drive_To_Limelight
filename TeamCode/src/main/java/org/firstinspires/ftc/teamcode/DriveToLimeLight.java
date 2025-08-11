@@ -20,7 +20,7 @@ import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.FeedbackType;
 import dev.nextftc.control.feedback.PIDCoefficients;
 import dev.nextftc.control.feedback.PIDElement;
-
+@Config
 @TeleOp
 public class DriveToLimeLight extends LinearOpMode {
     private ElapsedTime runtime = new ElapsedTime();
@@ -39,13 +39,13 @@ public class DriveToLimeLight extends LinearOpMode {
     double lateral = 0.0;
     double yaw = 0.0;
 
-    PIDCoefficients yawPIDCoefficients = new PIDCoefficients(0.0,0.0,0.0);
-    PIDCoefficients axialPIDCoefficients = new PIDCoefficients(0.0,0.0,0.0);
-    PIDCoefficients lateralPIDCoefficients = new PIDCoefficients(0.0,0.0,0.0);
+    public static PIDCoefficients yawPIDCoefficients = new PIDCoefficients(0.05,0.0,0.0);
+    public static PIDCoefficients axialPIDCoefficients = new PIDCoefficients(0.9,0.0,0.0005);
+    public static PIDCoefficients lateralPIDCoefficients = new PIDCoefficients(-0.3,0.0,0.00001);
 
-    double axialOffset = 0.0;
-    double lateralOffset = 0.0;
-    double yawOffset = 0.0;
+    public static double axialOffset = 1.0;
+    public static double lateralOffset = 0.0;
+    public static double yawOffset = 0.0;
 
     @Override
     public void runOpMode() {
@@ -92,9 +92,9 @@ public class DriveToLimeLight extends LinearOpMode {
         // run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
             if (gamepad1.a) {
-                gamepadDrive();
-            } else {
                 aprilTagDrive();
+            } else {
+                gamepadDrive();
             }
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: $runtime");
@@ -145,16 +145,19 @@ public class DriveToLimeLight extends LinearOpMode {
         if (!fiducialResults.isEmpty()) {
             FiducialResult snapshot = fiducialResults.get(0);
 
-            if (lastLength != fiducialResults.size()) {
+            //if (lastLength != fiducialResults.size()) {
                 // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
-                axial = axialPID.calculate(new KineticState(axialOffset - snapshot.getRobotPoseTargetSpace().getPosition().z)); // Note: pushing stick forward gives negative value
+                axial = axialPID.calculate(new KineticState(-axialOffset - snapshot.getRobotPoseTargetSpace().getPosition().z)); // Note: pushing stick forward gives negative value
                 lateral = lateralPID.calculate(new KineticState(-lateralOffset + snapshot.getRobotPoseTargetSpace().getPosition().x));
-                yaw = yawPID.calculate(new KineticState(-yawOffset - snapshot.getRobotPoseTargetSpace().getOrientation().getYaw()));
+                yaw = yawPID.calculate(new KineticState(-yawOffset + snapshot.getRobotPoseTargetSpace().getOrientation().getYaw() -1.5));
+            /*
             } else {
                 axial = 0.0;
                 lateral = 0.0;
                 yaw = 0.0;
             }
+
+             */
             // Combine the joystick requests for each axis-motion to determine each wheel's power.
             // Set up a variable for each drive wheel to save the power level for telemetry.
             double leftFrontPower = axial + lateral + yaw;
@@ -171,6 +174,13 @@ public class DriveToLimeLight extends LinearOpMode {
             rightFrontDrive.setPower(rightFrontPower);
             leftBackDrive.setPower(leftBackPower);
             rightBackDrive.setPower(rightBackPower);
+
+            telemetry.addData("Axial error:", -axialOffset - snapshot.getRobotPoseTargetSpace().getPosition().z);
+            telemetry.addData("Lateral error:", -lateralOffset + snapshot.getRobotPoseTargetSpace().getPosition().x);
+            telemetry.addData("Yaw error:", -yawOffset + snapshot.getRobotPoseTargetSpace().getOrientation().getYaw() - 1.5);
+            telemetry.addData("Axial output:", axial);
+            telemetry.addData("Lateral output:", lateral);
+            telemetry.addData("Yaw output:", yaw);
             telemetry.addData("Axial:", -snapshot.getRobotPoseTargetSpace().getPosition().z);
             telemetry.addData("Lateral:", snapshot.getRobotPoseTargetSpace().getPosition().x);
             telemetry.addData("Yaw:", snapshot.getRobotPoseTargetSpace().getOrientation().getYaw());
